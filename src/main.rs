@@ -156,28 +156,24 @@ fn lex_rparlen(input: &[u8], start: usize) -> Result<(Token, usize), LexError> {
     consume_byte(input, start, b')').map(|(_, end)| (Token::rparen(Loc(start, end)), end))
 }
 
-fn lecognize_many(input: &[u8], mut pos: usize, mut f: impl FnMut(u8) -> bool) -> usize {
+fn recognize_many(input: &[u8], mut pos: usize, mut f: impl FnMut(u8) -> bool) -> usize {
     while pos < input.len() && f(input[pos]) {
         pos += 1;
     }
     pos
 }
 
-fn lex_number(input: &[u8], mut pos: usize) -> Result<(Token, usize), LexError> {
+fn lex_number(input: &[u8], pos: usize) -> Result<(Token, usize), LexError> {
     use std::str::from_utf8;
 
     let start = pos;
-    while pos < input.len() && b"1234567890".contains(&input[pos]) {
-        pos += 1;
-    }
-    let n = from_utf8(&input[start..pos]).unwrap().parse().unwrap();
-    Ok((Token::number(n, Loc(start, pos)), pos))
+    let end = recognize_many(input, pos, |b| b"1234567890".contains(&b));
+    let n = from_utf8(&input[start..end]).unwrap().parse().unwrap();
+    Ok((Token::number(n, Loc(start, end)), end))
 }
 
-fn skip_spaces(input: &[u8], mut pos: usize) -> Result<((), usize), LexError> {
-    while pos < input.len() && b" \n\t".contains(&input[pos]) {
-        pos += 1;
-    }
+fn skip_spaces(input: &[u8], pos: usize) -> Result<((), usize), LexError> {
+    let pos = recognize_many(input, pos, |b| b" \n\t".contains(&b));
     Ok(((), pos))
 }
 fn main() {
