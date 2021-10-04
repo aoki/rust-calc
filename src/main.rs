@@ -1,3 +1,54 @@
+/// Unray Operator data strictire
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum UniOpKind {
+    Plus,
+    Minus,
+}
+
+type UniOp = Annot<UniOpKind>;
+
+impl UniOp {
+    fn plus(loc: Loc) -> Self {
+        Self::new(UniOpKind::Plus, loc)
+    }
+    fn minus(loc: Loc) -> Self {
+        Self::new(UniOpKind::Minus, loc)
+    }
+}
+
+/// AST data structure
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum AstKind {
+    /// Number
+    Num(u64),
+    /// Unray operation
+    UniOp { op: UniOp, e: Box<Ast> },
+    /// Binary operation
+    BinOp { op: BinOp, l: Box<Ast>, r: Box<Ast> },
+}
+type Ast = Annot<AstKind>;
+
+impl Ast {
+    fn num(n: u64, loc: Loc) -> Self {
+        Self::new(AstKind::Num(n), loc)
+    }
+
+    fn uniop(op: UniOp, e: Ast, loc: Loc) -> Self {
+        Self::new(AstKind::UniOp { op, e: Box::new(e) }, loc)
+    }
+
+    fn binop(op: BinOp, l: Ast, r: Ast, loc: Loc) -> Self {
+        Self::new(
+            AstKind::BinOp {
+                op,
+                l: Box::new(l),
+                r: Box::new(r),
+            },
+            loc,
+        )
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum LexErrorKind {
     InvalidChar(char),
