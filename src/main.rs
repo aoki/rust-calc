@@ -1,4 +1,50 @@
-/// Unray Operator data strictire
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum ParseError {
+    /// 予期しないトークンが来た
+    UnexpectedToken(Token),
+    /// 式を期待していたのに式でないものが来た
+    NotExpression(Token),
+    /// 演算子を期待していたのに演算子でないものが来た
+    NotOperator(Token),
+    /// 括弧が閉じられていない
+    UncloseOpenParen(Token),
+    /// 式の解析が終わったのにまだトークンが残っている
+    RedundantExpression(Token),
+    /// パース途中で入力が終わった
+    Eof,
+}
+
+// Binary Operator data structure
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum BinOpKind {
+    /// 加算
+    Add,
+    /// 減算
+    Sub,
+    /// 乗算
+    Mult,
+    /// 除算
+    Div,
+}
+
+type BinOpe = Annot<BinOpKind>;
+
+impl BinOpe {
+    fn add(loc: Loc) -> Self {
+        Self::new(BinOpKind::Add, loc)
+    }
+    fn sub(loc: Loc) -> Self {
+        Self::new(BinOpKind::Sub, loc)
+    }
+    fn mult(loc: Loc) -> Self {
+        Self::new(BinOpKind::Mult, loc)
+    }
+    fn div(loc: Loc) -> Self {
+        Self::new(BinOpKind::Div, loc)
+    }
+}
+
+/// Unray Operator data structure
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum UniOpKind {
     Plus,
