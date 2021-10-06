@@ -27,9 +27,9 @@ enum BinOpKind {
     Div,
 }
 
-type BinOpe = Annot<BinOpKind>;
+type BinOp = Annot<BinOpKind>;
 
-impl BinOpe {
+impl BinOp {
     fn add(loc: Loc) -> Self {
         Self::new(BinOpKind::Add, loc)
     }
