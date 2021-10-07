@@ -1,3 +1,47 @@
+fn parse_expr1<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Ast, ParseError>
+where
+    Tokens: Iterator<Item = Token>,
+{
+    todo!();
+}
+
+/// EXPR2 = EXPR2, ("*" | "/"), EXPR1 | EXPR2 ;
+/// EXPR2 = EXPR1 EXPR2_Loop
+/// EXPR2_Loop = ("*" | "/"), EXPR1, EXPR3_Loop | ε ;
+fn parse_expr2<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Ast, ParseError>
+where
+    Tokens: Iterator<Item = Token>,
+{
+    // EXPR1
+    let mut e = parse_expr1(tokens)?;
+
+    // EXPR2_Loop
+    loop {
+        match tokens.peek().map(|tok| tok.value) {
+            // ("*" | "/")
+            Some(TokenKind::Asterisk) | Some(TokenKind::Slash) => {
+                let op = match tokens.next().unwrap() {
+                    Token {
+                        value: TokenKind::Asterisk,
+                        loc,
+                    } => BinOp::mult(loc),
+                    Token {
+                        value: TokenKind::Slash,
+                        loc,
+                    } => BinOp::div(loc),
+                    _ => unreachable!(),
+                };
+
+                // EXPR1
+                let r = parse_expr1(tokens)?;
+                let loc = e.loc.merge(&r.loc);
+                e = Ast::binop(op, e, r, loc)
+            }
+            _ => return Ok(e),
+        }
+    }
+}
+
 /// EXPR3 = EXPR3, ("+" | "-"), EXPR2, | EXPR2 ;
 /// 左再帰の除去
 /// EXPR3 = EXPR2 EXPR3_Loop
@@ -349,6 +393,7 @@ fn test_lexer() {
 
 use std::io;
 use std::iter::Peekable;
+use std::panic::PanicInfo;
 
 fn prompt(s: &str) -> io::Result<()> {
     use std::io::{stdout, Write};
