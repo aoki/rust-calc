@@ -3,6 +3,7 @@ where
     Tokens: Iterator<Item = Token>,
 {
     todo!();
+    // Err(ParseError::Eof)
 }
 
 /// EXPR2 = EXPR2, ("*" | "/"), EXPR1 | EXPR2 ;
@@ -393,7 +394,6 @@ fn test_lexer() {
 
 use std::io;
 use std::iter::Peekable;
-use std::panic::PanicInfo;
 
 fn prompt(s: &str) -> io::Result<()> {
     use std::io::{stdout, Write};
