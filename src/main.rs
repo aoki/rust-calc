@@ -40,34 +40,22 @@ fn parse_expr2<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Ast, ParseError>
 where
     Tokens: Iterator<Item = Token>,
 {
-    // EXPR1
-    let mut e = parse_expr1(tokens)?;
-
-    // EXPR2_Loop
-    loop {
-        match tokens.peek().map(|tok| tok.value) {
-            // ("*" | "/")
-            Some(TokenKind::Asterisk) | Some(TokenKind::Slash) => {
-                let op = match tokens.next().unwrap() {
-                    Token {
-                        value: TokenKind::Asterisk,
-                        loc,
-                    } => BinOp::mult(loc),
-                    Token {
-                        value: TokenKind::Slash,
-                        loc,
-                    } => BinOp::div(loc),
-                    _ => unreachable!(),
-                };
-
-                // EXPR1
-                let r = parse_expr1(tokens)?;
-                let loc = e.loc.merge(&r.loc);
-                e = Ast::binop(op, e, r, loc)
-            }
-            _ => return Ok(e),
-        }
+    fn parse_expr1_op<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<BinOp, ParseError>
+    where
+        Tokens: Iterator<Item = Token>,
+    {
+        let op = tokens
+            .peek()
+            .ok_or(ParseError::Eof)
+            .and_then(|tok| match tok.value {
+                TokenKind::Plus => Ok(BinOp::add(tok.loc.clone())),
+                TokenKind::Minus => Ok(BinOp::sub(tok.loc.clone())),
+                _ => Err(ParseError::NotOperator(tok.clone())),
+            })?;
+        tokens.next();
+        Ok(op)
     }
+    parse_left_binop(tokens, parse_expr1, parse_expr1_op)
 }
 
 /// EXPR3 = EXPR3, ("+" | "-"), EXPR2, | EXPR2 ;
