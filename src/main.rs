@@ -6,6 +6,33 @@ where
     // Err(ParseError::Eof)
 }
 
+fn parse_left_binop<Tokens>(
+    tokens: &mut Peekable<Tokens>,
+    subexpr_parser: fn(&mut Peekable<Tokens>) -> Result<Ast, ParseError>,
+    op_parser: fn(&mut Peekable<Tokens>) -> Result<BinOp, ParseError>,
+) -> Result<Ast, ParseError>
+where
+    Tokens: Iterator<Item = Token>,
+{
+    let mut e = subexpr_parser(tokens)?;
+    loop {
+        match tokens.peek() {
+            Some(_) => {
+                let op = match op_parser(tokens) {
+                    Ok(op) => op,
+                    Err(_) => break,
+                };
+
+                let r = subexpr_parser(tokens)?;
+                let loc = e.loc.merge(&r.loc);
+                e = Ast::binop(op, e, r, loc);
+            }
+            _ => break,
+        }
+    }
+    Ok(e)
+}
+
 /// EXPR2 = EXPR2, ("*" | "/"), EXPR1 | EXPR2 ;
 /// EXPR2 = EXPR1 EXPR2_Loop
 /// EXPR2_Loop = ("*" | "/"), EXPR1, EXPR3_Loop | ε ;
@@ -415,6 +442,8 @@ fn main() {
         if let Some(Ok(line)) = lines.next() {
             let token = lex(&line);
             println!("{:?}", token);
+            let r = token.map(|tokens| parse(tokens));
+            println!("{:?}", r);
         } else {
             break;
         }
