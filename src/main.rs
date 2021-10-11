@@ -1,9 +1,40 @@
+/// ATOM = UNUMBER | "(", EXPR3, ")" ;
+///
+
+fn parse_atom<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Ast, ParseError>
+where
+    Tokens: Iterator<Item = Token>,
+{
+    todo!()
+}
+
+/// EXPR1 = ("+" | "-"), ATOM | ATOM
 fn parse_expr1<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Ast, ParseError>
 where
     Tokens: Iterator<Item = Token>,
 {
-    todo!();
-    // Err(ParseError::Eof)
+    match tokens.peek().map(|tok| tok.value) {
+        Some(TokenKind::Plus) | Some(TokenKind::Minus) => {
+            // ("+" | "-")
+            let op = match tokens.next() {
+                Some(Token {
+                    value: TokenKind::Plus,
+                    loc,
+                }) => UniOp::plus(loc),
+                Some(Token {
+                    value: TokenKind::Minus,
+                    loc,
+                }) => UniOp::minus(loc),
+                _ => unreachable!(),
+            };
+
+            // ATOM
+            let e = parse_atom(tokens)?;
+            let loc = op.loc.merge(&e.loc);
+            Ok(Ast::uniop(op, e, loc))
+        }
+        _ => parse_atom(tokens),
+    }
 }
 
 fn parse_left_binop<Tokens>(
