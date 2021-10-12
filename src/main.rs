@@ -1,11 +1,30 @@
 /// ATOM = UNUMBER | "(", EXPR3, ")" ;
-///
-
 fn parse_atom<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Ast, ParseError>
 where
     Tokens: Iterator<Item = Token>,
 {
-    todo!()
+    tokens
+        .next()
+        .ok_or(ParseError::Eof)
+        .and_then(|tok| match tok.value {
+            // UNUMBER
+            TokenKind::Number(n) => Ok(Ast::new(AstKind::Num(n), tok.loc)),
+            // | "(" EXPR3 ")"
+            TokenKind::LParen => {
+                let e = parse_expr3(tokens)?;
+                match tokens.next() {
+                    Some(Token {
+                        value: TokenKind::RParen,
+                        .. // ..で値の残りの部分を無視する https://doc.rust-jp.rs/book-ja/ch18-03-pattern-syntax.html
+                    }) => Ok(e),
+                    Some(t) => {
+                        Err(ParseError::RedundantExpression(t))
+                    },
+                    _ => Err(ParseError::UncloseOpenParen(tok)),
+                }
+            }
+            _ => Err(ParseError::NotExpression(tok)),
+        })
 }
 
 /// EXPR1 = ("+" | "-"), ATOM | ATOM
@@ -33,6 +52,7 @@ where
             let loc = op.loc.merge(&e.loc);
             Ok(Ast::uniop(op, e, loc))
         }
+        // ATOM
         _ => parse_atom(tokens),
     }
 }
@@ -79,8 +99,8 @@ where
             .peek()
             .ok_or(ParseError::Eof)
             .and_then(|tok| match tok.value {
-                TokenKind::Plus => Ok(BinOp::add(tok.loc.clone())),
-                TokenKind::Minus => Ok(BinOp::sub(tok.loc.clone())),
+                TokenKind::Asterisk => Ok(BinOp::mult(tok.loc.clone())),
+                TokenKind::Slash => Ok(BinOp::div(tok.loc.clone())),
                 _ => Err(ParseError::NotOperator(tok.clone())),
             })?;
         tokens.next();
@@ -410,23 +430,6 @@ fn skip_spaces(input: &[u8], pos: usize) -> Result<((), usize), LexError> {
     Ok(((), pos))
 }
 
-#[test]
-fn test_lexer() {
-    assert_eq!(
-        lex("1 + 2 * 3 - -10"),
-        Ok(vec![
-            Token::number(1, Loc(0, 1)),
-            Token::plus(Loc(2, 3)),
-            Token::number(2, Loc(4, 5)),
-            Token::asterisk(Loc(6, 7)),
-            Token::number(3, Loc(8, 9)),
-            Token::minus(Loc(10, 11)),
-            Token::minus(Loc(12, 13)),
-            Token::number(10, Loc(13, 15))
-        ])
-    )
-}
-
 use std::io;
 use std::iter::Peekable;
 
@@ -456,4 +459,65 @@ fn main() {
             break;
         }
     }
+}
+
+#[test]
+fn test_lexer() {
+    assert_eq!(
+        lex("1 + 2 * 3 - -10"),
+        Ok(vec![
+            Token::number(1, Loc(0, 1)),
+            Token::plus(Loc(2, 3)),
+            Token::number(2, Loc(4, 5)),
+            Token::asterisk(Loc(6, 7)),
+            Token::number(3, Loc(8, 9)),
+            Token::minus(Loc(10, 11)),
+            Token::minus(Loc(12, 13)),
+            Token::number(10, Loc(13, 15))
+        ])
+    )
+}
+
+#[test]
+fn test_parser() {
+    // // 1 + 2 * 3 - -10
+    // let ast = parse(vec![
+    //     Token::number(1, Loc(0, 1)),
+    //     Token::plus(Loc(2, 3)),
+    //     Token::number(2, Loc(4, 5)),
+    //     Token::asterisk(Loc(6, 7)),
+    //     Token::number(3, Loc(8, 9)),
+    //     Token::minus(Loc(10, 11)),
+    //     Token::minus(Loc(12, 13)),
+    //     Token::number(10, Loc(13, 15)),
+    // ]);
+    let ast = parse(lex("1 + 2 * 3 - -10").unwrap());
+
+    assert_eq!(
+        ast,
+        // AST - AST
+        Ok(Ast::binop(
+            BinOp::sub(Loc(10, 11)),
+            // 1 + AST
+            Ast::binop(
+                BinOp::add(Loc(2, 3)),
+                Ast::num(1, Loc(0, 1)),
+                // 2 * 3
+                Ast::binop(
+                    BinOp::new(BinOpKind::Mult, Loc(6, 7)),
+                    Ast::num(2, Loc(4, 5)),
+                    Ast::num(3, Loc(8, 9)),
+                    Loc(4, 9),
+                ),
+                Loc(0, 9)
+            ),
+            // - 10
+            Ast::uniop(
+                UniOp::minus(Loc(12, 13)),
+                Ast::num(10, Loc(13, 15)),
+                Loc(12, 15)
+            ),
+            Loc(0, 15)
+        ))
+    )
 }
