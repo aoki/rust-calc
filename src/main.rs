@@ -8,7 +8,7 @@ where
         .ok_or(ParseError::Eof)
         .and_then(|tok| match tok.value {
             // UNUMBER
-            TokenKind::Number(n) => Ok(Ast::new(AstKind::Num(n), tok.loc)),
+            TokenKind::Number(n) => Ok(Ast::num(n, tok.loc)),
             // | "(" EXPR3 ")"
             TokenKind::LParen => {
                 let e = parse_expr3(tokens)?;
@@ -451,10 +451,10 @@ fn main() {
     loop {
         prompt("> ").unwrap();
         if let Some(Ok(line)) = lines.next() {
-            let token = lex(&line);
-            println!("{:?}", token);
-            let r = token.map(|tokens| parse(tokens));
-            println!("{:?}", r);
+            let tokens = lex(&line).unwrap();
+            println!("{:?}", tokens);
+            let ast = parse(tokens).unwrap();
+            println!("{:?}", ast);
         } else {
             break;
         }
