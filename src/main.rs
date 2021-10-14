@@ -1,3 +1,21 @@
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum Error {
+    Lexer(LexError),
+    Parser(ParseError),
+}
+
+impl From<LexError> for Error {
+    fn from(e: LexError) -> Self {
+        Error::Lexer(e)
+    }
+}
+
+impl From<ParseError> for Error {
+    fn from(e: ParseError) -> Self {
+        Error::Parser(e)
+    }
+}
+
 /// ATOM = UNUMBER | "(", EXPR3, ")" ;
 fn parse_atom<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Ast, ParseError>
 where
@@ -253,6 +271,16 @@ impl Ast {
     }
 }
 
+use std::str::FromStr;
+impl FromStr for Ast {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let tokens = lex(s)?;
+        let ast = parse(tokens)?;
+        Ok(ast)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum LexErrorKind {
     InvalidChar(char),
@@ -451,9 +479,12 @@ fn main() {
     loop {
         prompt("> ").unwrap();
         if let Some(Ok(line)) = lines.next() {
-            let tokens = lex(&line).unwrap();
-            println!("{:?}", tokens);
-            let ast = parse(tokens).unwrap();
+            let ast = match line.parse::<Ast>() {
+                Ok(ast) => ast,
+                Err(e) => {
+                    unimplemented!()
+                }
+            };
             println!("{:?}", ast);
         } else {
             break;
@@ -480,7 +511,7 @@ fn test_lexer() {
 
 #[test]
 fn test_parser() {
-    // // 1 + 2 * 3 - -10
+    // 1 + 2 * 3 - -10
     // let ast = parse(vec![
     //     Token::number(1, Loc(0, 1)),
     //     Token::plus(Loc(2, 3)),
