@@ -17,7 +17,7 @@ impl Error {
         use self::Error::*;
         use self::ParseError as P;
 
-        let (e, loc): (&StdError, Loc) = match self {
+        let (e, loc): (&dyn StdError, Loc) = match self {
             Lexer(e) => (e, e.loc.clone()),
             Parser(e) => {
                 let loc = match e {
@@ -170,13 +170,14 @@ where
                 Some(Token {
                     value: TokenKind::Plus,
                     loc,
-                }) => UniOp::plus(loc),
+                }) => Ok(UniOp::plus(loc)),
                 Some(Token {
                     value: TokenKind::Minus,
                     loc,
-                }) => UniOp::minus(loc),
+                }) => Ok(UniOp::minus(loc)),
+                Some(t) => Err(ParseError::UnexpectedToken(t)),
                 _ => unreachable!(),
-            };
+            }?;
 
             // ATOM
             let e = parse_atom(tokens)?;
