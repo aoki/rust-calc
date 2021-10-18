@@ -1,3 +1,40 @@
+// --- Interpreter --------------------
+
+/// 評価機を表すデータ型
+struct Interpreter;
+
+impl Interpreter {
+    pub fn new() -> Self {
+        Interpreter
+    }
+}
+// https://doc.rust-lang.org/std/error/trait.Error.html
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum InterpreterErrorKind {
+    DivisionByZero,
+}
+
+type InterpreterError = Annot<InterpreterErrorKind>;
+
+impl fmt::Display for InterpreterError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use InterpreterErrorKind::*;
+        match self.value {
+            DivisionByZero => write!(f, "{}: Division by zero", &self.loc),
+        }
+    }
+}
+impl StdError for InterpreterError {}
+
+impl InterpreterError {
+    fn show_diagnostic(&self, input: &str) {
+        eprintln!("{}", self);
+        print_annot(input, self.loc.clone());
+    }
+}
+
+// ------------------------------------
+
 fn show_trace<E: StdError>(e: E) {
     eprintln!("{}", e);
     let mut source = e.source();
@@ -13,7 +50,7 @@ fn print_annot(input: &str, loc: Loc) {
 }
 
 impl Error {
-    fn show_daiagnostic(&self, input: &str) {
+    fn show_diagnostic(&self, input: &str) {
         use self::Error::*;
         use self::ParseError as P;
 
@@ -596,7 +633,7 @@ fn main() {
             let ast = match line.parse::<Ast>() {
                 Ok(ast) => ast,
                 Err(e) => {
-                    e.show_daiagnostic(&line);
+                    e.show_diagnostic(&line);
                     show_trace(e);
                     continue;
                 }
