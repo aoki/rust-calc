@@ -722,6 +722,45 @@ fn prompt(s: &str) -> io::Result<()> {
     stdout.flush()
 }
 
+struct RpnInterpreter;
+
+impl RpnInterpreter {
+    pub fn new() -> Self {
+        RpnInterpreter
+    }
+
+    pub fn eval(&self, exp: &str) -> f64 {
+        let mut stack = Vec::new();
+
+        for token in exp.split_whitespace() {
+            if let Ok(num) = token.parse::<f64>() {
+                stack.push(num);
+            } else {
+                match token {
+                    "+" => self.apply(&mut stack, |x, y| x + y),
+                    "-" => self.apply(&mut stack, |x, y| x - y),
+                    "*" => self.apply(&mut stack, |x, y| x * y),
+                    "/" => self.apply(&mut stack, |x, y| x / y),
+                    _ => panic!("Unknown operator: {}", token),
+                }
+            }
+        }
+        stack.pop().expect("Stack underflow")
+    }
+
+    fn apply<F>(&self, stack: &mut Vec<f64>, fun: F)
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        if let (Some(y), Some(x)) = (stack.pop(), stack.pop()) {
+            let z = fun(x, y);
+            stack.push(z);
+        } else {
+            panic!("Stack undeflow");
+        }
+    }
+}
+
 use std::io::{BufReader, Lines};
 fn interpreter_main(lines: &mut Lines<BufReader<StdinLock>>) {
     let mut interp = Interpreter::new();
@@ -754,6 +793,7 @@ fn interpreter_main(lines: &mut Lines<BufReader<StdinLock>>) {
 
 fn rpn_compiler_main(lines: &mut Lines<BufReader<StdinLock>>) {
     let mut compiler = RpnCompiler::new();
+    let rpn_interpreter = RpnInterpreter::new();
 
     loop {
         prompt("RPN COMPILER> ").unwrap();
@@ -768,6 +808,9 @@ fn rpn_compiler_main(lines: &mut Lines<BufReader<StdinLock>>) {
             };
             let rpn = compiler.compile(&ast);
             println!("{}", rpn);
+
+            let n = rpn_interpreter.eval(&rpn);
+            println!("{}", n);
         } else {
             break;
         }
