@@ -711,7 +711,7 @@ fn skip_spaces(input: &[u8], pos: usize) -> Result<((), usize), LexError> {
     Ok(((), pos))
 }
 
-use std::io;
+use std::io::{self, StdinLock};
 use std::iter::Peekable;
 
 fn prompt(s: &str) -> io::Result<()> {
@@ -721,19 +721,42 @@ fn prompt(s: &str) -> io::Result<()> {
     stdout.write(s.as_bytes())?;
     stdout.flush()
 }
-fn main() {
-    use std::io::{stdin, BufRead, BufReader};
 
-    // let mut interp = Interpreter::new();
+use std::io::{BufReader, Lines};
+fn interpreter_main(lines: &mut Lines<BufReader<StdinLock>>) {
+    let mut interp = Interpreter::new();
+    loop {
+        prompt("INTERPRETER> ").unwrap();
+        if let Some(Ok(line)) = lines.next() {
+            let ast = match line.parse::<Ast>() {
+                Ok(ast) => ast,
+                Err(e) => {
+                    e.show_diagnostic(&line);
+                    show_trace(e);
+                    continue;
+                }
+            };
+            let n = match interp.eval(&ast) {
+                Ok(n) => n,
+                Err(e) => {
+                    e.show_diagnostic(&line);
+                    show_trace(e);
+                    continue;
+                }
+            };
+
+            println!("{:?}", n);
+        } else {
+            break;
+        }
+    }
+}
+
+fn rpn_compiler_main(lines: &mut Lines<BufReader<StdinLock>>) {
     let mut compiler = RpnCompiler::new();
 
-    let stdin = stdin();
-    let stdin = stdin.lock();
-    let stdin = BufReader::new(stdin);
-    let mut lines = stdin.lines();
-
     loop {
-        prompt("> ").unwrap();
+        prompt("RPN COMPILER> ").unwrap();
         if let Some(Ok(line)) = lines.next() {
             let ast = match line.parse::<Ast>() {
                 Ok(ast) => ast,
@@ -744,19 +767,31 @@ fn main() {
                 }
             };
             let rpn = compiler.compile(&ast);
-            // let n = match interp.eval(&ast) {
-            //     Ok(n) => n,
-            //     Err(e) => {
-            //         e.show_diagnostic(&line);
-            //         show_trace(e);
-            //         continue;
-            //     }
-            // };
-
-            // println!("{:?}", n);
             println!("{}", rpn);
         } else {
             break;
+        }
+    }
+}
+
+fn main() {
+    use std::io::{stdin, BufRead};
+
+    println!("0: Interpreter");
+    println!("1: RPN compiler");
+
+    let stdin = stdin();
+    let stdin = stdin.lock();
+    let stdin = BufReader::new(stdin);
+    let mut lines = stdin.lines();
+
+    if let Some(Ok(line)) = lines.next() {
+        if let Ok(1) = line.parse::<u8>() {
+            println!("Use RPN Compiler.",);
+            rpn_compiler_main(&mut lines);
+        } else {
+            println!("Use Interpreter.",);
+            interpreter_main(&mut lines);
         }
     }
 }
